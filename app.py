@@ -1,4 +1,4 @@
-from shiny import App, ui, render
+from shiny import App, ui, render, reactive
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -42,7 +42,6 @@ app_ui = ui.page_sidebar(
         ui.output_data_frame("penguins_grid")
     ),
 
-    # Layout with 2 visualizations side-by-side & 1 fullscreen beneath
     ui.layout_columns(
         ui.card(
             ui.card_header("Plotly Histogram"),
@@ -60,25 +59,30 @@ app_ui = ui.page_sidebar(
     )
 )
 
+# --------------------------------------------------------
 # Server logic
+# --------------------------------------------------------
 def server(input, output, session):
-    def filtered_df():
+    
+    # ✅ Reactive filter
+    @reactive.calc
+    def filtered_data():
         return penguins_df[penguins_df["species"].isin(input.selected_species_list())]
 
     @output
     @render.data_frame
     def data_table():
-        return filtered_df()
+        return filtered_data()
 
     @output
     @render.data_frame
     def penguins_grid():
-        return penguins_df  # Show full data grid (static)
+        return penguins_df  # Static unfiltered grid
 
     @output
     @render_plotly
     def plotly_histogram():
-        df = filtered_df()
+        df = filtered_data()
         fig = px.histogram(
             df,
             x=input.selected_attribute(),
@@ -95,7 +99,7 @@ def server(input, output, session):
     @output
     @render.plot
     def seaborn_histogram():
-        df = filtered_df()
+        df = filtered_data()
         plt.figure(figsize=(6, 4))
         sns.histplot(
             data=df,
@@ -111,13 +115,12 @@ def server(input, output, session):
     @output
     @render_plotly
     def plotly_scatterplot():
-        df = filtered_df()
+        df = filtered_data()
         selected_attr = input.selected_attribute()
-        
         fig = px.scatter(
             df,
-            x=selected_attr,              
-            y="body_mass_g",              
+            x=selected_attr,
+            y="body_mass_g",
             color="species",
             symbol="species",
             size="bill_length_mm",
@@ -133,17 +136,6 @@ def server(input, output, session):
         return fig
 
 # --------------------------------------------------------
-# Reactive calculations and effects
-# --------------------------------------------------------
-
-# Add a reactive calculation to filter the data
-# By decorating the function with @reactive, we can use the function to filter the data
-# The function will be called whenever an input functions used to generate that output changes.
-# Any output that depends on the reactive function (e.g., filtered_data()) will be updated when the data changes.
-
-        @reactive.calc
-        def filtered_data():
-            return penguins_df
-
 # Run the app
+# --------------------------------------------------------
 app = App(app_ui, server)
