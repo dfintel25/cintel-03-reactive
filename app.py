@@ -23,6 +23,12 @@ app_ui = ui.page_sidebar(
             "Number of Seaborn bins",
             5, 100, 20
         ),
+        ui.input_select(
+        "selected_island",
+        "Choose island",
+        choices=penguins_df["island"].unique().tolist(),
+        selected=penguins_df["island"].unique()[0]
+        ),
         ui.input_checkbox_group(
             "selected_species_list",
             "Filter species",
@@ -67,8 +73,11 @@ def server(input, output, session):
     # Reactive filter
     @reactive.calc
     def filtered_data():
-        return penguins_df[penguins_df["species"].isin(input.selected_species_list())]
-
+        return penguins_df[
+        (penguins_df["species"].isin(input.selected_species_list())) &
+        (penguins_df["island"] == input.selected_island())
+    ]
+        
     @output
     @render.data_frame
     def data_table():
@@ -77,24 +86,26 @@ def server(input, output, session):
     @output
     @render.data_frame
     def penguins_grid():
-        return penguins_df  # Static unfiltered grid
+        return filtered_data()  # Static unfiltered grid
 
     @output
-    @render_plotly
+    @render_widget
     def plotly_histogram():
         df = filtered_data()
+        selected_attr = input.selected_attribute()
         fig = px.histogram(
-            df,
-            x=input.selected_attribute(),
-            nbins=30,
-            color="species",
-            title=f"{input.selected_attribute()} Histogram by Species"
-        )
+        df,
+        x=selected_attr,
+        nbins=30,
+        color="species",
+        title=f"{selected_attr} Histogram by Species"
+    )
         fig.update_layout(
-            xaxis_title=input.selected_attribute(),
-            yaxis_title="Count"
-        )
+        xaxis_title=selected_attr,
+        yaxis_title="Count"
+    )
         return fig
+
 
     @output
     @render.plot
@@ -113,27 +124,28 @@ def server(input, output, session):
         plt.ylabel("Count")
 
     @output
-    @render_plotly
+    @render_widget
     def plotly_scatterplot():
         df = filtered_data()
         selected_attr = input.selected_attribute()
         fig = px.scatter(
-            df,
-            x=selected_attr,
-            y="body_mass_g",
-            color="species",
-            symbol="species",
-            size="bill_length_mm",
-            size_max=6,
-            hover_data=["flipper_length_mm", "bill_depth_mm"],
-            title=f"{selected_attr} vs Body Mass"
-        )
+        df,
+        x=selected_attr,
+        y="body_mass_g",
+        color="species",
+        symbol="species",
+        size="bill_length_mm",
+        size_max=6,
+        hover_data=["flipper_length_mm", "bill_depth_mm"],
+        title=f"{selected_attr} vs Body Mass"
+    )
         fig.update_layout(
-            xaxis_title=selected_attr,
-            yaxis_title="Body Mass (g)",
-            legend_title="Species"
-        )
+        xaxis_title=selected_attr,
+        yaxis_title="Body Mass (g)",
+        legend_title="Species"
+    )
         return fig
+
 
 # --------------------------------------------------------
 # Run the app
