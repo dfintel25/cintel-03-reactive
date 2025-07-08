@@ -64,7 +64,7 @@ app_ui = ui.page_sidebar(
 # --------------------------------------------------------
 def server(input, output, session):
     
-    # ✅ Reactive filter
+    # Reactive filter
     @reactive.calc
     def filtered_data():
         return penguins_df[penguins_df["species"].isin(input.selected_species_list())]
